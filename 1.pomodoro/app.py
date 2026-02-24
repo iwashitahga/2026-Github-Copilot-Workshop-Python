@@ -62,9 +62,18 @@ def create_app(test_config=None):
 			return jsonify({"error": "Missing required fields"}), 400
 
 		def _normalize_iso_z(dt_str):
-			# フロントエンドから送られてくる "2026-02-24T10:00:00.000Z" のような
-			# 末尾 "Z" 付きISO文字列を、datetime.fromisoformat が解釈できる
-			# "+00:00" 付きの文字列に正規化する。
+			"""
+			末尾 "Z" 付きISO文字列を datetime.fromisoformat が解釈できる形式に正規化する。
+			
+			フロントエンドから送られてくる "2026-02-24T10:00:00.000Z" のような
+			末尾 "Z" 付きISO文字列を "+00:00" 付きの文字列に変換する。
+			
+			Args:
+				dt_str: ISO形式の日時文字列
+			
+			Returns:
+				正規化されたISO形式の日時文字列
+			"""
 			if isinstance(dt_str, str) and dt_str.endswith("Z"):
 				return dt_str[:-1] + "+00:00"
 			return dt_str
@@ -92,6 +101,18 @@ def create_app(test_config=None):
 
 		# UTC正規化: タイムゾーン付きの場合はUTCに変換、naiveの場合はUTCと見なす
 		def _to_utc(dt):
+			"""
+			日時をUTC時刻に正規化する。
+			
+			タイムゾーン付きの日時はUTCに変換し、タイムゾーン情報を削除する。
+			タイムゾーンなしの日時（naive）はそのまま返す（UTCと見なす）。
+			
+			Args:
+				dt: datetime オブジェクト
+			
+			Returns:
+				タイムゾーン情報なしのUTC日時（naive datetime）
+			"""
 			if dt.tzinfo is not None:
 				return dt.astimezone(timezone.utc).replace(tzinfo=None)
 			return dt
