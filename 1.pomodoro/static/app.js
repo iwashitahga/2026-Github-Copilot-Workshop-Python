@@ -195,6 +195,7 @@ function saveSession() {
     body: JSON.stringify(payload),
   }).catch((err) => {
     console.error("Failed to save session:", err);
+    return Promise.resolve();
   });
 }
 
