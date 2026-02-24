@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from flask import Flask, jsonify, render_template, request, g
 
@@ -61,9 +61,17 @@ def create_app(test_config=None):
 		if not required_fields.issubset(data.keys()):
 			return jsonify({"error": "Missing required fields"}), 400
 
+		def _normalize_iso_z(dt_str):
+			# フロントエンドから送られてくる "2026-02-24T10:00:00.000Z" のような
+			# 末尾 "Z" 付きISO文字列を、datetime.fromisoformat が解釈できる
+			# "+00:00" 付きの文字列に正規化する。
+			if isinstance(dt_str, str) and dt_str.endswith("Z"):
+				return dt_str[:-1] + "+00:00"
+			return dt_str
+
 		try:
-			start_time = datetime.fromisoformat(data["start_time"])
-			end_time = datetime.fromisoformat(data["end_time"])
+			start_time = datetime.fromisoformat(_normalize_iso_z(data["start_time"]))
+			end_time = datetime.fromisoformat(_normalize_iso_z(data["end_time"]))
 		except (TypeError, ValueError):
 			return jsonify({"error": "Invalid datetime format"}), 400
 
@@ -82,6 +90,15 @@ def create_app(test_config=None):
 		if end_time < start_time:
 			return jsonify({"error": "End time must be after start time"}), 400
 
+		# UTC正規化: タイムゾーン付きの場合はUTCに変換、naiveの場合はUTCと見なす
+		def _to_utc(dt):
+			if dt.tzinfo is not None:
+				return dt.astimezone(timezone.utc).replace(tzinfo=None)
+			return dt
+
+		start_time_utc = _to_utc(start_time)
+		end_time_utc = _to_utc(end_time)
+
 		db = get_db()
 		cursor = db.execute(
 			"""
@@ -89,8 +106,8 @@ def create_app(test_config=None):
 			VALUES (?, ?, ?, ?)
 			""",
 			(
-				start_time.isoformat(timespec="seconds"),
-				end_time.isoformat(timespec="seconds"),
+				start_time_utc.isoformat(timespec="seconds"),
+				end_time_utc.isoformat(timespec="seconds"),
 				duration_sec,
 				session_type,
 			),

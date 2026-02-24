@@ -17,7 +17,9 @@ class ApiTests(unittest.TestCase):
         self.client = self.app.test_client()
 
     def tearDown(self):
+        # 一時ファイルをクローズしてから削除する
         self.db_file.close()
+        Path(self.db_file.name).unlink(missing_ok=True)
 
     def test_create_session_and_stats(self):
         payload = {
@@ -64,6 +66,24 @@ class ApiTests(unittest.TestCase):
         data = stats.get_json()
         self.assertEqual(data["completed_sessions"], 0)
         self.assertEqual(data["focus_minutes"], 0)
+
+    def test_iso_with_z_suffix(self):
+        # フロントエンドから送られてくる "Z" 付きISO文字列のテスト
+        payload = {
+            "start_time": "2026-02-24T10:00:00.000Z",
+            "end_time": "2026-02-24T10:25:00.000Z",
+            "duration_sec": 1500,
+            "type": "work",
+        }
+        response = self.client.post(
+            "/api/sessions", data=json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 201)
+
+        stats = self.client.get("/api/stats?date=2026-02-24")
+        data = stats.get_json()
+        self.assertEqual(data["completed_sessions"], 1)
+        self.assertEqual(data["focus_minutes"], 25)
 
 
 if __name__ == "__main__":
