@@ -45,8 +45,7 @@ def create_app(test_config=None):
 		)
 		db.commit()
 
-	@app.before_request
-	def ensure_db():
+	with app.app_context():
 		init_db()
 
 	app.teardown_appcontext(close_db)
