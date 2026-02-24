@@ -193,7 +193,9 @@ function saveSession() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }).catch(() => {});
+  }).catch((err) => {
+    console.error("Failed to save session:", err);
+  });
 }
 
 function fetchStats() {
@@ -205,7 +207,9 @@ function fetchStats() {
       sessionsCount.textContent = data.completed_sessions ?? 0;
       focusMinutes.textContent = data.focus_minutes ?? 0;
     })
-    .catch(() => {});
+    .catch((err) => {
+      console.error("Failed to fetch stats:", err);
+    });
 }
 
 modeButtons.forEach((button) => {
