@@ -152,8 +152,7 @@ function completeTimer() {
   }
   updateUI();
   notifyCompletion();
-  saveSession();
-  fetchStats();
+  saveSession().then(() => fetchStats());
 }
 
 function tick() {
@@ -180,7 +179,7 @@ function notifyCompletion() {
 function saveSession() {
   const snapshot = stateMachine.snapshot();
   if (!sessionStart) {
-    return;
+    return Promise.resolve();
   }
   const endTime = new Date();
   const payload = {
@@ -189,12 +188,15 @@ function saveSession() {
     duration_sec: snapshot.totalSeconds,
     type: snapshot.mode,
   };
-  fetch("/api/sessions", {
+  sessionStart = null;
+  return fetch("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }).catch(() => {});
-  sessionStart = null;
+  }).catch((err) => {
+    console.error("Failed to save session:", err);
+    return Promise.resolve();
+  });
 }
 
 function fetchStats() {
@@ -206,7 +208,9 @@ function fetchStats() {
       sessionsCount.textContent = data.completed_sessions ?? 0;
       focusMinutes.textContent = data.focus_minutes ?? 0;
     })
-    .catch(() => {});
+    .catch((err) => {
+      console.error("Failed to fetch stats:", err);
+    });
 }
 
 modeButtons.forEach((button) => {
